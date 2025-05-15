@@ -2106,9 +2106,27 @@ class NDVisualizer {
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-const N = 11; 
+// Global variable to hold the current visualizer
+let currentVisualizer;
 
-const visualizer = new NDVisualizer(N, makeSphereCenters(N));
+// Function to initialize or reinitialize the visualizer
+function initVisualizer(dimensions) {
+    // Create a new visualizer with the selected number of dimensions
+    currentVisualizer = new NDVisualizer(dimensions, makeSphereCenters(dimensions));
+    
+    // Create sliders for the new visualizer
+    currentVisualizer.createSliders();
+    
+    // Draw the visualization
+    currentVisualizer.draw();
+}
 
-visualizer.createSliders();
-visualizer.draw();
+// Event listener for dimension dropdown changes
+document.getElementById('dimensionSelect').addEventListener('change', function() {
+    const dimensions = parseInt(this.value);
+    initVisualizer(dimensions);
+});
+
+// Initialize with the default selection (11D)
+const initialDimensions = parseInt(document.getElementById('dimensionSelect').value);
+initVisualizer(initialDimensions);

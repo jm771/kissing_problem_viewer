@@ -46,8 +46,13 @@ select:focus {
     display: flex;
     justify-content: center;
     width: 100%;
-    margin: 0 auto;
+    margin: 0 auto 80px; /* Added bottom margin to make room for X-axis controls */
     position: relative;
+}
+
+.canvas-controls-container {
+    position: relative;
+    display: inline-block;
 }
 
 canvas { 
@@ -152,12 +157,6 @@ input:checked + .toggle-slider:before {
     transform: translateX(26px);
 }
 
-.canvas-controls-container {
-    position: relative;
-    display: inline-block;
-    margin: 0 auto;
-}
-
 .x-axis-controls {
     position: absolute;
     bottom: -60px;
@@ -237,4 +236,10 @@ input:checked + .toggle-slider:before {
 
 .control-button:hover {
     background-color: #45a049;
+}
+
+.button-container {
+    display: flex;
+    justify-content: center;
+    margin-top: 20px;
 }

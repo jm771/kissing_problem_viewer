@@ -1,52 +1,106 @@
 body { 
-            background: #111; 
-            margin: 0; 
-            color: white;
-            font-family: Arial, sans-serif;
-        }
-        canvas { 
-            display: block; 
-            margin: 0 auto; 
-            background: #222; 
-        }
-        #sliders {
-            width: 80%;
-            margin: 20px auto;
-            padding: 15px;
-            background: #333;
-            border-radius: 5px;
-        }
-        #sliders div {
-            margin: 15px 0;
-        }
-        label {
-            display: inline-block;
-            width: 120px;
-            color: white;
-        }
-        input[type="range"] {
-            width: 60%;
-            vertical-align: middle;
-        }
-        span {
-            display: inline-block;
-            width: 40px;
-            text-align: right;
-            margin-left: 10px;
-        }
-        .readme-link {
-            text-align: center;
-            margin: 15px auto;
-        }
-        .readme-link a {
-            color: #4CAF50;
-            text-decoration: none;
-            font-weight: bold;
-        }
-        .readme-link a:hover {
-            text-decoration: underline;
-        }
-        .toggle-container {
+    background: #111; 
+    margin: 0; 
+    color: white;
+    font-family: Arial, sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+#controls {
+    width: 80%;
+    margin: 20px auto;
+    padding: 15px;
+    background: #333;
+    border-radius: 5px;
+    display: flex;
+    justify-content: center;
+}
+
+.dimension-selector {
+    display: flex;
+    align-items: center;
+}
+
+.dimension-selector label {
+    margin-right: 10px;
+    width: auto;
+}
+
+select {
+    background-color: #444;
+    color: white;
+    padding: 5px 10px;
+    border: none;
+    border-radius: 4px;
+    font-size: 16px;
+}
+
+select:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px #4CAF50;
+}
+
+.canvas-container {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin: 0 auto;
+    position: relative;
+}
+
+canvas { 
+    display: block; 
+    background: #222; 
+}
+
+#sliders {
+    width: 80%;
+    margin: 20px auto;
+    padding: 15px;
+    background: #333;
+    border-radius: 5px;
+}
+
+#sliders div {
+    margin: 15px 0;
+}
+
+label {
+    display: inline-block;
+    width: 120px;
+    color: white;
+}
+
+input[type="range"] {
+    width: 60%;
+    vertical-align: middle;
+}
+
+span {
+    display: inline-block;
+    width: 40px;
+    text-align: right;
+    margin-left: 10px;
+}
+
+.readme-link {
+    text-align: center;
+    margin: 15px auto;
+}
+
+.readme-link a {
+    color: #4CAF50;
+    text-decoration: none;
+    font-weight: bold;
+}
+
+.readme-link a:hover {
+    text-decoration: underline;
+}
+
+.toggle-container {
     display: flex;
     align-items: center;
     margin: 15px 0;
@@ -97,36 +151,90 @@ input:checked + .toggle-slider {
 input:checked + .toggle-slider:before {
     transform: translateX(26px);
 }
-#controls {
-    width: 80%;
-    margin: 20px auto;
-    padding: 15px;
-    background: #333;
-    border-radius: 5px;
-    display: flex;
-    justify-content: center;
+
+.canvas-controls-container {
+    position: relative;
+    display: inline-block;
+    margin: 0 auto;
 }
 
-.dimension-selector {
+.x-axis-controls {
+    position: absolute;
+    bottom: -60px;
+    left: 80px;
+    right: 0;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px;
+}
+
+.y-axis-controls {
+    position: absolute;
+    top: 0;
+    left: -80px;
+    bottom: 80px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-around;
+    padding: 10px;
+}
+
+.plane-rotation-control {
+    position: absolute;
+    bottom: -60px;
+    left: -80px;
+    padding: 10px;
+}
+
+.button-group {
     display: flex;
     align-items: center;
+    margin: 5px;
 }
 
-.dimension-selector label {
-    margin-right: 10px;
+.x-axis-button {
+    flex-direction: column;
+    text-align: center;
+}
+
+.y-axis-button {
+    flex-direction: row;
+}
+
+.rotation-label {
+    display: block;
     width: auto;
+    margin: 5px;
+    white-space: nowrap;
+    color: #ddd;
+    font-size: 12px;
 }
 
-select {
+.button-group button {
+    margin: 0 3px;
+    width: 30px;
+    height: 30px;
     background-color: #444;
     color: white;
-    padding: 5px 10px;
     border: none;
     border-radius: 4px;
-    font-size: 16px;
+    cursor: pointer;
 }
 
-select:focus {
-    outline: none;
-    box-shadow: 0 0 0 2px #4CAF50;
+.button-group button:hover {
+    background-color: #555;
+}
+
+.control-button {
+    padding: 8px 16px;
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.control-button:hover {
+    background-color: #45a049;
 }

@@ -2107,135 +2107,189 @@ class NDVisualizer {
     this.draw();
   }
 
-  // Create all UI controls
-  createControls() {
-    const slidersDiv = document.getElementById('sliders');
-    slidersDiv.innerHTML = '';
-    
-    // Add toggle switch for distance scaling
-    const toggleContainer = createToggleSwitch(() => this.draw());
-    const toggleInput = toggleContainer.querySelector('input');
-    toggleInput.checked = this.scaleByDistance;
-    toggleInput.addEventListener('change', () => {
-      this.setScaleByDistance(toggleInput.checked);
-    });
-    slidersDiv.appendChild(toggleContainer);
-    
-    // Add zoom slider
-    const zoomSlider = createSlider(
-      'zoomSlider', 
-      'Zoom', 
-      0.05, 
-      1, 
-      this.zoomScale, 
-      0.05, 
-      () => {
-        this.setZoom(parseFloat(document.getElementById('zoomSlider').value));
-      }
-    );
-    slidersDiv.appendChild(zoomSlider);
-    
-    // Add circle size slider
-    const circleSizeSlider = createSlider(
-      'circleSizeSlider', 
-      'Circle Radius', 
-      0.02, 
-      1.5, 
-      this.circleSize, 
-      0.02, 
-      () => {
-        this.setCircleSize(parseFloat(document.getElementById('circleSizeSlider').value));
-      }
-    );
-    slidersDiv.appendChild(circleSizeSlider);
-    
-    // Add rotation step size slider
-    const rotationStepSlider = createSlider(
-      'rotationStepSlider', 
-      'Rotation Step Size', 
-      0.01, 
-      Math.PI/4, 
-      this.rotationStepSize, 
-      0.01, 
-      () => {
-        this.setRotationStepSize(parseFloat(document.getElementById('rotationStepSlider').value));
-      }
-    );
-    slidersDiv.appendChild(rotationStepSlider);
-    
-    // Add reset button
-    const resetButton = document.createElement('button');
-    resetButton.textContent = 'Reset Rotation';
-    resetButton.className = 'control-button';
-    resetButton.addEventListener('click', () => this.resetRotation());
-    
-    const resetContainer = document.createElement('div');
-    resetContainer.className = 'button-container';
-    resetContainer.appendChild(resetButton);
-    slidersDiv.appendChild(resetContainer);
-    
-    // Create rotation controls container
-    const rotationControlsContainer = document.createElement('div');
-    rotationControlsContainer.className = 'rotation-controls';
-    slidersDiv.appendChild(rotationControlsContainer);
-    
-    // Create X-axis rotation controls
-    const xAxisControls = document.createElement('div');
-    xAxisControls.className = 'axis-controls';
-    xAxisControls.innerHTML = '<h3>X-Axis Rotations</h3>';
-    rotationControlsContainer.appendChild(xAxisControls);
-    
-    // Create Y-axis rotation controls
-    const yAxisControls = document.createElement('div');
-    yAxisControls.className = 'axis-controls';
-    yAxisControls.innerHTML = '<h3>Y-Axis Rotations</h3>';
-    rotationControlsContainer.appendChild(yAxisControls);
-    
-    // Add rotation buttons for each dimension
-    for (let dim = 1; dim < this.dimensions; dim++) {
-      // X-axis rotation (dimension 0 and dim)
-      const xAxisGroup = document.createElement('div');
-      xAxisGroup.className = 'button-group';
-      
-      const xAxisLabel = document.createElement('span');
-      xAxisLabel.textContent = `Axis ${dim+1}`;
-      xAxisGroup.appendChild(xAxisLabel);
-      
-      const xMinusButton = document.createElement('button');
-      xMinusButton.textContent = '-';
-      xMinusButton.addEventListener('click', () => this.rotate(0, dim, -1));
-      xAxisGroup.appendChild(xMinusButton);
-      
-      const xPlusButton = document.createElement('button');
-      xPlusButton.textContent = '+';
-      xPlusButton.addEventListener('click', () => this.rotate(0, dim, 1));
-      xAxisGroup.appendChild(xPlusButton);
-      
-      xAxisControls.appendChild(xAxisGroup);
-      
-      // Y-axis rotation (dimension 1 and dim)
-      if (dim > 1) { // Skip the first one since it's already covered by X-axis rotation
-        const yAxisGroup = document.createElement('div');
-        yAxisGroup.className = 'button-group';
-        
-        const yAxisLabel = document.createElement('span');
-        yAxisLabel.textContent = `Axis ${dim+1}`;
-        yAxisGroup.appendChild(yAxisLabel);
-        
-        const yMinusButton = document.createElement('button');
-        yMinusButton.textContent = '-';
-        yMinusButton.addEventListener('click', () => this.rotate(1, dim, -1));
-        yAxisGroup.appendChild(yMinusButton);
-        
-        const yPlusButton = document.createElement('button');
-        yPlusButton.textContent = '+';
-        yPlusButton.addEventListener('click', () => this.rotate(1, dim, 1));
-        yAxisGroup.appendChild(yPlusButton);
-        
-        yAxisControls.appendChild(yAxisGroup);
-      }
+createControls() {
+  const slidersDiv = document.getElementById('sliders');
+  slidersDiv.innerHTML = '';
+  
+  // Add toggle switch for distance scaling
+  const toggleContainer = createToggleSwitch(() => this.draw());
+  const toggleInput = toggleContainer.querySelector('input');
+  toggleInput.checked = this.scaleByDistance;
+  toggleInput.addEventListener('change', () => {
+    this.setScaleByDistance(toggleInput.checked);
+  });
+  slidersDiv.appendChild(toggleContainer);
+  
+  // Add zoom slider
+  const zoomSlider = createSlider(
+    'zoomSlider', 
+    'Zoom', 
+    0.05, 
+    1, 
+    this.zoomScale, 
+    0.05, 
+    () => {
+      this.setZoom(parseFloat(document.getElementById('zoomSlider').value));
     }
+  );
+  slidersDiv.appendChild(zoomSlider);
+  
+  // Add circle size slider
+  const circleSizeSlider = createSlider(
+    'circleSizeSlider', 
+    'Circle Radius', 
+    0.02, 
+    1.5, 
+    this.circleSize, 
+    0.02, 
+    () => {
+      this.setCircleSize(parseFloat(document.getElementById('circleSizeSlider').value));
+    }
+  );
+  slidersDiv.appendChild(circleSizeSlider);
+  
+  // Add rotation step size slider
+  const rotationStepSlider = createSlider(
+    'rotationStepSlider', 
+    'Rotation Step Size', 
+    0.01, 
+    Math.PI/4, 
+    this.rotationStepSize, 
+    0.01, 
+    () => {
+      this.setRotationStepSize(parseFloat(document.getElementById('rotationStepSlider').value));
+    }
+  );
+  slidersDiv.appendChild(rotationStepSlider);
+  
+  // Add reset button
+  const resetButton = document.createElement('button');
+  resetButton.textContent = 'Reset Rotation';
+  resetButton.className = 'control-button';
+  resetButton.addEventListener('click', () => this.resetRotation());
+  
+  const resetContainer = document.createElement('div');
+  resetContainer.className = 'button-container';
+  resetContainer.appendChild(resetButton);
+  slidersDiv.appendChild(resetContainer);
+  
+  // Create canvas controls container
+  const canvasContainer = document.querySelector('.canvas-container');
+  if (!canvasContainer) {
+    // Create canvas container if it doesn't exist
+    const newCanvasContainer = document.createElement('div');
+    newCanvasContainer.className = 'canvas-container';
+    
+    // Get the canvas and its parent
+    const canvas = document.getElementById('canvas');
+    const canvasParent = canvas.parentElement;
+    
+    // Insert the new container where the canvas was
+    canvasParent.insertBefore(newCanvasContainer, canvas);
+    
+    // Move the canvas into the new container
+    newCanvasContainer.appendChild(canvas);
   }
+  
+  // Remove any existing canvas controls
+  const existingControls = document.querySelector('.canvas-controls-container');
+  if (existingControls) {
+    existingControls.remove();
+  }
+  
+  // Create a container for the canvas and its controls
+  const canvasControlsContainer = document.createElement('div');
+  canvasControlsContainer.className = 'canvas-controls-container';
+  document.querySelector('.canvas-container').appendChild(canvasControlsContainer);
+  
+  // Move the canvas into this container
+  const canvas = document.getElementById('canvas');
+  canvasControlsContainer.appendChild(canvas);
+  
+  // Create X-axis rotation controls (horizontal along bottom)
+  const xAxisControls = document.createElement('div');
+  xAxisControls.className = 'x-axis-controls';
+  canvasControlsContainer.appendChild(xAxisControls);
+  
+  // Create Y-axis rotation controls (vertical along left side)
+  const yAxisControls = document.createElement('div');
+  yAxisControls.className = 'y-axis-controls';
+  canvasControlsContainer.appendChild(yAxisControls);
+  
+  // Create the special case "Rotate in plane" control for bottom left
+  const planeRotationControl = document.createElement('div');
+  planeRotationControl.className = 'plane-rotation-control';
+  canvasControlsContainer.appendChild(planeRotationControl);
+  
+  // Add the special case button (X-axis with dimension 1)
+  const planeRotationGroup = document.createElement('div');
+  planeRotationGroup.className = 'button-group';
+  
+  const planeRotationLabel = document.createElement('span');
+  planeRotationLabel.textContent = 'Rotate in plane';
+  planeRotationLabel.className = 'rotation-label';
+  planeRotationGroup.appendChild(planeRotationLabel);
+  
+  // For the plane rotation, keep the original order (- then +)
+  const planeMinusButton = document.createElement('button');
+  planeMinusButton.textContent = '-';
+  planeMinusButton.addEventListener('click', () => this.rotate(0, 1, -1));
+  planeRotationGroup.appendChild(planeMinusButton);
+  
+  const planePlusButton = document.createElement('button');
+  planePlusButton.textContent = '+';
+  planePlusButton.addEventListener('click', () => this.rotate(0, 1, 1));
+  planeRotationGroup.appendChild(planePlusButton);
+  
+  planeRotationControl.appendChild(planeRotationGroup);
+  
+  // Add X-axis rotation buttons (starting from dimension 2)
+  for (let dim = 2; dim < this.dimensions; dim++) {
+    const xAxisGroup = document.createElement('div');
+    xAxisGroup.className = 'button-group x-axis-button';
+    
+    const xAxisLabel = document.createElement('span');
+    xAxisLabel.textContent = `X-${dim+1}`;
+    xAxisLabel.className = 'rotation-label';
+    xAxisGroup.appendChild(xAxisLabel);
+    
+    // For X-axis controls, put + button above - button
+    const xPlusButton = document.createElement('button');
+    xPlusButton.textContent = '+';
+    xPlusButton.addEventListener('click', () => this.rotate(0, dim, 1));
+    xAxisGroup.appendChild(xPlusButton);
+    
+    const xMinusButton = document.createElement('button');
+    xMinusButton.textContent = '-';
+    xMinusButton.addEventListener('click', () => this.rotate(0, dim, -1));
+    xAxisGroup.appendChild(xMinusButton);
+    
+    xAxisControls.appendChild(xAxisGroup);
+  }
+  
+  // Add Y-axis rotation buttons (starting from dimension 2)
+  for (let dim = 2; dim < this.dimensions; dim++) {
+    const yAxisGroup = document.createElement('div');
+    yAxisGroup.className = 'button-group y-axis-button';
+    
+    const yAxisLabel = document.createElement('span');
+    yAxisLabel.textContent = `Y-${dim+1}`;
+    yAxisLabel.className = 'rotation-label';
+    yAxisGroup.appendChild(yAxisLabel);
+    
+    const yMinusButton = document.createElement('button');
+    yMinusButton.textContent = '-';
+    yMinusButton.addEventListener('click', () => this.rotate(1, dim, -1));
+    yAxisGroup.appendChild(yMinusButton);
+    
+    const yPlusButton = document.createElement('button');
+    yPlusButton.textContent = '+';
+    yPlusButton.addEventListener('click', () => this.rotate(1, dim, 1));
+    yAxisGroup.appendChild(yPlusButton);
+    
+    yAxisControls.appendChild(yAxisGroup);
+  }
+}
 }
 
 

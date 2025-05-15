@@ -1,6 +1,6 @@
 // From the google results: https://colab.research.google.com/github/google-deepmind/alphaevolve_results/blob/master/mathematical_results.ipynb#scrollTo=apAGiN_xeJ2h
 
-const SPHERE_CENTERS = [[ -126140549599, -4345934944399,   470267207045,   263582420739,
+const SPHERE_CENTERS_11D = [[ -126140549599, -4345934944399,   470267207045,   263582420739,
    -214242641164,  6323834592662, -5619609064852, -1309426459793,
     402713598698,  2669019955225,  -434830723701],
  [ 4995872033121, -3686427151476, -2854162550811,  1374657172375,
@@ -1780,33 +1780,61 @@ const SPHERE_CENTERS = [[ -126140549599, -4345934944399,   470267207045,   26358
    4423778632034, -1993974011012, -4511280703919, -1620258902598,
    1407442349625,  2801596965688, -5385383608572]]
 
-
-const N = 3;
-
-// I used this as a test shape to convince myself it works in lower dimensions
-function makeStar() {
-  arr = []
-  arr.push(Array(N).fill(0))
-  for (let i = 0; i < N; i++)
-  {
-    element1 = Array(N).fill(0)
-    element1[i] = 1
-    element2 = Array(N).fill(0)
-    element2[i] = -1
-    arr.push(element1)
-    arr.push(element2)
-  }
-
-  return arr
+function scale_sphere_centers(centers, scale) {
+  return centers.map(v => v.map(p => p * scale))
 }
 
-// Quickly hacked together - half written by AI - I have not written javascript before
+function make3dSphereCenters() {
+  // The verticies of a icosahedron
+  let ret = []
+  let phi = (1 + Math.sqrt(5)) / 2
+  for (const sign1 of [-1, 1]) {
+    for (const sign2 of [-1, 1]) {
+      ret.push([0, sign1, sign2*phi])
+      ret.push([sign1, sign2*phi, 0])
+      ret.push([sign1*phi, 0, sign2])
+    }
+  }
 
+  return scale_sphere_centers(ret, 1/Math.sqrt(1 + phi * phi))
+}
 
-// This is the magnitude of the google vectors, map stuff on to [-1, 1] instead
-const CENTER_SCALE = 1e-13
-// points = SPHERE_CENTERS.map(v => v.map(p => p * CENTER_SCALE))
-points = makeStar()
+function make4dSphereCenters() {
+  let ret = []
+  // The verticies of a 24-cell
+  for (const sign1 of [-1, 1]) {
+    for (const sign2 of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        for (let j = i + 1; j < 4; j++) {
+          let = el = Array(4).fill(0);
+          el[i] = sign1;
+          el[j] = sign2;
+          ret.push(el)
+        }
+      }
+    }    
+  }
+
+  console.log(ret)
+
+  return ret;
+}
+
+function makeSphereCenters(n) {
+  switch (n) {
+    case 3:
+      return make3dSphereCenters();
+    case 4:
+      return make4dSphereCenters();
+    case 11:
+      // This is the magnitude of the google vectors, map stuff on to [-1, 1] instead
+      return scale_sphere_centers(SPHERE_CENTERS_11D, 1e-13)
+  }
+}
+
+const N = 11;
+
+points = makeSphereCenters(N)
 
 const DEFAULT_CIRCLE_RADIUS = 0.5
 
@@ -1817,7 +1845,7 @@ W[1] = 1;
 
 // We're doing an orthographic projection (to make the maths easier), but we'll scale sizes of circles as though we're viewing from this point to have some sense of "depth"
 const VIEW_POINT = Array(N).fill(0);
-VIEW_POINT[2] = -2;
+VIEW_POINT[2] = -4;
 
 
 let zoomScale = 0.5; // Default zoom level
@@ -1991,7 +2019,7 @@ function createToggleSwitch() {
     
     const textLabel = document.createElement('label');
     textLabel.htmlFor = 'distanceToggle';
-    textLabel.textContent = 'Scale by distance: ';
+    textLabel.textContent = 'Scale circles by distance: ';
     
     label.appendChild(input);
     label.appendChild(span);
@@ -2016,7 +2044,7 @@ function createSliders(n) {
   
   // Add circle size slider
   slidersDiv.appendChild(
-    createSlider('circleSizeSlider', 'Circle Radius', 0.05, 3, DEFAULT_CIRCLE_RADIUS, 0.05, updateCircleSize)
+    createSlider('circleSizeSlider', 'Circle Radius', 0.02, 1.5, DEFAULT_CIRCLE_RADIUS, 0.02, updateCircleSize)
   );
   
   // Add rotation sliders

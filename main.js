@@ -1832,6 +1832,56 @@ function makeSphereCenters(n) {
   }
 }
 
+function identityMatrix(n) {
+  return Array(n).fill().map((_, i) => 
+    Array(n).fill().map((_, j) => i === j ? 1 : 0)
+  );
+}
+
+function matrixMultiply(a, b) {
+  const n = a.length;
+  let result = Array(n).fill().map(() => Array(n).fill(0));
+  
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      for (let k = 0; k < n; k++) {
+        result[i][j] += a[i][k] * b[k][j];
+      }
+    }
+  }
+  
+  return result;
+}
+
+function applyMatrix(matrix, vector) {
+  const n = vector.length;
+  let result = Array(n).fill(0);
+  
+  for (let i = 0; i < n; i++) {
+    for (let j = 0; j < n; j++) {
+      result[i] += matrix[i][j] * vector[j];
+    }
+  }
+  
+  return result;
+}
+
+function rotationMatrix(n, axis1, axis2, theta) {
+  // Create identity matrix
+  let matrix = identityMatrix(n);
+  
+  // Set rotation values
+  const c = Math.cos(theta);
+  const s = Math.sin(theta);
+  
+  matrix[axis1][axis1] = c;
+  matrix[axis1][axis2] = -s;
+  matrix[axis2][axis1] = s;
+  matrix[axis2][axis2] = c;
+  
+  return matrix;
+}
+
 function dot(a, b) {
     return a.reduce((sum, ai, i) => sum + ai * b[i], 0);
 }
@@ -1958,10 +2008,12 @@ class NDVisualizer {
     this.zoomScale = 0.5;
     this.circleSize = DEFAULT_CIRCLE_RADIUS;
     this.scaleByDistance = true;
+    this.rotationMatrix = identityMatrix(dimensions);
     
     // Canvas and context
     this.canvas = document.getElementById('canvas');
     this.ctx = this.canvas.getContext('2d');
+    this.rotationStepSize = 0.1; // Default rotation step size
   }
 
   // Get the current scale factor for drawing
@@ -1978,7 +2030,7 @@ class NDVisualizer {
     ];
   }
 
-    // Draw a single point
+ // Draw a single point
   drawPoint(pt, v, w, camera) {
     const [px, py, scale_factor] = projectTo2D(pt, v, w, camera);
     const [x, y] = this.toCanvasCoords([px, py]);
@@ -1994,15 +2046,15 @@ class NDVisualizer {
     this.ctx.stroke();
   }
 
-    // Draw all points with current rotation angles
+  // Draw all points with current rotation
   draw() {
-    let angles = this.getAngles()
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
     this.ctx.strokeStyle = '#fff';
     
-    let w = applyGivenRotations(this.w, angles);
-    let v = applyGivenRotations(this.v, angles);
-    let camera = applyGivenRotations(this.viewPoint, angles);
+    // Apply rotation matrix to basis vectors and camera
+    let v = applyMatrix(this.rotationMatrix, this.v);
+    let w = applyMatrix(this.rotationMatrix, this.w);
+    let camera = applyMatrix(this.rotationMatrix, this.viewPoint);
     
     // Draw all sphere centers
     this.points.forEach(pt => {
@@ -2016,31 +2068,47 @@ class NDVisualizer {
     this.drawPoint(Array(this.dimensions).fill(0), v, w, camera);
   }
 
+  // Apply rotation around specified axes
+  rotate(axis1, axis2, direction) {
+    const theta = direction * this.rotationStepSize;
+    const rotMat = rotationMatrix(this.dimensions, axis1, axis2, theta);
+    
+    
+    this.rotationMatrix = matrixMultiply(this.rotationMatrix, rotMat);
+    this.draw();
+  }
+
   // Update zoom scale
   setZoom(zoom) {
     this.zoomScale = zoom;
+    this.draw();
   }
   
   // Update circle size
   setCircleSize(size) {
     this.circleSize = size;
+    this.draw();
+  }
+  
+  // Update rotation step size
+  setRotationStepSize(size) {
+    this.rotationStepSize = size;
   }
   
   // Update distance scaling toggle
   setScaleByDistance(enabled) {
     this.scaleByDistance = enabled;
+    this.draw();
   }
 
-  // Function to get angles from the sliders
-  getAngles() {
-    const n = this.dimensions;
-    return Array.from({length: n - 1}, (_, i) =>
-      parseFloat(document.getElementById(`slider${i}`).value)
-    );
+  // Reset rotation matrix to identity
+  resetRotation() {
+    this.rotationMatrix = identityMatrix(this.dimensions);
+    this.draw();
   }
 
-  // Create all UI sliders
-  createSliders() {
+  // Create all UI controls
+  createControls() {
     const slidersDiv = document.getElementById('sliders');
     slidersDiv.innerHTML = '';
     
@@ -2050,7 +2118,6 @@ class NDVisualizer {
     toggleInput.checked = this.scaleByDistance;
     toggleInput.addEventListener('change', () => {
       this.setScaleByDistance(toggleInput.checked);
-      this.draw();
     });
     slidersDiv.appendChild(toggleContainer);
     
@@ -2064,7 +2131,6 @@ class NDVisualizer {
       0.05, 
       () => {
         this.setZoom(parseFloat(document.getElementById('zoomSlider').value));
-        this.draw();
       }
     );
     slidersDiv.appendChild(zoomSlider);
@@ -2079,27 +2145,100 @@ class NDVisualizer {
       0.02, 
       () => {
         this.setCircleSize(parseFloat(document.getElementById('circleSizeSlider').value));
-        this.draw();
       }
     );
     slidersDiv.appendChild(circleSizeSlider);
     
-    // Add rotation sliders
-    for (let i = 0; i < this.dimensions - 1; ++i) {
-      const rotationSlider = createSlider(
-        `slider${i}`, 
-        `Angle ${i + 1}`, 
-        '0', 
-        (2 * Math.PI).toString(), 
-        '0', 
-        '0.01', 
-        () => this.draw()
-      );
-      slidersDiv.appendChild(rotationSlider);
+    // Add rotation step size slider
+    const rotationStepSlider = createSlider(
+      'rotationStepSlider', 
+      'Rotation Step Size', 
+      0.01, 
+      Math.PI/4, 
+      this.rotationStepSize, 
+      0.01, 
+      () => {
+        this.setRotationStepSize(parseFloat(document.getElementById('rotationStepSlider').value));
+      }
+    );
+    slidersDiv.appendChild(rotationStepSlider);
+    
+    // Add reset button
+    const resetButton = document.createElement('button');
+    resetButton.textContent = 'Reset Rotation';
+    resetButton.className = 'control-button';
+    resetButton.addEventListener('click', () => this.resetRotation());
+    
+    const resetContainer = document.createElement('div');
+    resetContainer.className = 'button-container';
+    resetContainer.appendChild(resetButton);
+    slidersDiv.appendChild(resetContainer);
+    
+    // Create rotation controls container
+    const rotationControlsContainer = document.createElement('div');
+    rotationControlsContainer.className = 'rotation-controls';
+    slidersDiv.appendChild(rotationControlsContainer);
+    
+    // Create X-axis rotation controls
+    const xAxisControls = document.createElement('div');
+    xAxisControls.className = 'axis-controls';
+    xAxisControls.innerHTML = '<h3>X-Axis Rotations</h3>';
+    rotationControlsContainer.appendChild(xAxisControls);
+    
+    // Create Y-axis rotation controls
+    const yAxisControls = document.createElement('div');
+    yAxisControls.className = 'axis-controls';
+    yAxisControls.innerHTML = '<h3>Y-Axis Rotations</h3>';
+    rotationControlsContainer.appendChild(yAxisControls);
+    
+    // Add rotation buttons for each dimension
+    for (let dim = 1; dim < this.dimensions; dim++) {
+      // X-axis rotation (dimension 0 and dim)
+      const xAxisGroup = document.createElement('div');
+      xAxisGroup.className = 'button-group';
+      
+      const xAxisLabel = document.createElement('span');
+      xAxisLabel.textContent = `Axis ${dim+1}`;
+      xAxisGroup.appendChild(xAxisLabel);
+      
+      const xMinusButton = document.createElement('button');
+      xMinusButton.textContent = '-';
+      xMinusButton.addEventListener('click', () => this.rotate(0, dim, -1));
+      xAxisGroup.appendChild(xMinusButton);
+      
+      const xPlusButton = document.createElement('button');
+      xPlusButton.textContent = '+';
+      xPlusButton.addEventListener('click', () => this.rotate(0, dim, 1));
+      xAxisGroup.appendChild(xPlusButton);
+      
+      xAxisControls.appendChild(xAxisGroup);
+      
+      // Y-axis rotation (dimension 1 and dim)
+      if (dim > 1) { // Skip the first one since it's already covered by X-axis rotation
+        const yAxisGroup = document.createElement('div');
+        yAxisGroup.className = 'button-group';
+        
+        const yAxisLabel = document.createElement('span');
+        yAxisLabel.textContent = `Axis ${dim+1}`;
+        yAxisGroup.appendChild(yAxisLabel);
+        
+        const yMinusButton = document.createElement('button');
+        yMinusButton.textContent = '-';
+        yMinusButton.addEventListener('click', () => this.rotate(1, dim, -1));
+        yAxisGroup.appendChild(yMinusButton);
+        
+        const yPlusButton = document.createElement('button');
+        yPlusButton.textContent = '+';
+        yPlusButton.addEventListener('click', () => this.rotate(1, dim, 1));
+        yAxisGroup.appendChild(yPlusButton);
+        
+        yAxisControls.appendChild(yAxisGroup);
+      }
     }
   }
-
 }
+
+
 
 
 // Drawing on canvas
@@ -2114,8 +2253,8 @@ function initVisualizer(dimensions) {
     // Create a new visualizer with the selected number of dimensions
     currentVisualizer = new NDVisualizer(dimensions, makeSphereCenters(dimensions));
     
-    // Create sliders for the new visualizer
-    currentVisualizer.createSliders();
+    // Create controls for the new visualizer
+    currentVisualizer.createControls();
     
     // Draw the visualization
     currentVisualizer.draw();

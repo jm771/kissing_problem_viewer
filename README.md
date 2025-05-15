@@ -6,7 +6,7 @@ Basically, we define a view plane, and we orthographically map each ball center 
 
 ### Control info
 #### Dimensions
--- I have also included the optimal kissing number solutions in 3 and 4 dimensions - which should help build some intuition for what the controls do. Start with them before moving to 11D
+I have also included the optimal kissing number solutions in 3 and 4 dimensions - which should help build some intuition for what the controls do. Start with them before moving to 11D
 
 #### Rotation controls
 We maintain a basis for the view. The X and Y axis of the view plane are the first two dimensions of this basis. The view plane is offset from the origin in the third dimension. Clicking the X-3 (+) button rotates the basis so as to rotate the X axis slightly towards the positive axis for dimension 3 (in the current basis). There is no need to have buttons for X-1 and Y-2 as you cant move an axis towards itself. The "Rotate in plane" button controls the special case of rotating between X and Y axes that otherwise would be duplicated. If this description doesn't make sense - try playing with it in 3D and 4D to develop an intuition.

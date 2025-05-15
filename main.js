@@ -1781,41 +1781,10 @@ const SPHERE_CENTERS = [[ -126140549599, -4345934944399,   470267207045,   26358
    1407442349625,  2801596965688, -5385383608572]]
 
 
-// Quickly hacked together - half written by AI - I have not written javascript before
-
-const N = 11;
-// This is the magnitude of the google vectors, map stuff on to [-1, 1] instead
-const CENTER_SCALE = 1e-13
-points = SPHERE_CENTERS.map(v => v.map(p => p * CENTER_SCALE))
-
-const CIRCLE_SCALE = 15
-
-const V = Array(N).fill(0);
-V[0] = 1;
-const W = Array(N).fill(0);
-W[1] = 1;
-
-// We're doing an orthographic projection (to make the maths easier), but we'll scale sizes of circles as though we're viewing from this point to have some sense of "depth"
-const VIEW_POINT = Array(N).fill(0);
-VIEW_POINT[2] = -2;
-
-
-const DEFAULT_SCALE = 100;
-let zoomScale = 3.0; // Default zoom level
-let cicleSize = CIRCLE_SCALE // Default circle scaling
-
-// Helper: Dot product for N-dimensional vectors
-function dot(a, b) {
-    return a.reduce((sum, ai, i) => sum + ai * b[i], 0);
-}
-
-// Helper: Vector addition and subtraction
-function add(a, b) { return a.map((ai, i) => ai + b[i]); }
-function sub(a, b) { return a.map((ai, i) => ai - b[i]); }
-function scale(a, s) { return a.map(ai => ai * s); }
+const N = 3;
 
 // I used this as a test shape to convince myself it works in lower dimensions
-function make_star() {
+function makeStar() {
   arr = []
   arr.push(Array(N).fill(0))
   for (let i = 0; i < N; i++)
@@ -1831,25 +1800,53 @@ function make_star() {
   return arr
 }
 
+// Quickly hacked together - half written by AI - I have not written javascript before
+
+
+// This is the magnitude of the google vectors, map stuff on to [-1, 1] instead
+const CENTER_SCALE = 1e-13
+// points = SPHERE_CENTERS.map(v => v.map(p => p * CENTER_SCALE))
+points = makeStar()
+
+const DEFAULT_CIRCLE_RADIUS = 0.5
+
+const V = Array(N).fill(0);
+V[0] = 1;
+const W = Array(N).fill(0);
+W[1] = 1;
+
+// We're doing an orthographic projection (to make the maths easier), but we'll scale sizes of circles as though we're viewing from this point to have some sense of "depth"
+const VIEW_POINT = Array(N).fill(0);
+VIEW_POINT[2] = -2;
+
+
+let zoomScale = 0.5; // Default zoom level
+let cicleSize = DEFAULT_CIRCLE_RADIUS // Default circle scaling
+
+// Helper: Dot product for N-dimensional vectors
+function dot(a, b) {
+    return a.reduce((sum, ai, i) => sum + ai * b[i], 0);
+}
+
+// Helper: Vector addition and subtraction
+function add(a, b) { return a.map((ai, i) => ai + b[i]); }
+function sub(a, b) { return a.map((ai, i) => ai - b[i]); }
+function scale(a, s) { return a.map(ai => ai * s); }
+
+
+
 // v and w are N-dimensional, orthonormal vectors defining the 2D view plane
 function projectTo2D(P, v, w, camera) {
     let x = dot(P, v);
     let y = dot(P, w);
-    // let resid = sub(P, scale(v, x))
-    // resid = sub(P, scale(w, y))
-    distance_vec = sub(P, camera)
-    scale_denom = Math.sqrt(dot(distance_vec, distance_vec))
-    return [x, y, scale_denom];
+    let resid = sub(P, scale(v, x))
+    resid = sub(resid, scale(w, y))
+    distance_vec = sub(resid, camera)
+    // Stuff at the origin will not be scaled
+    scale_factor = Math.sqrt(dot(camera, camera) / dot(distance_vec, distance_vec))
+    return [x, y, scale_factor];
 }
 
-// Scale [-1, 1] up to canvas size
-function toCanvasCoords(pt, width, height) {
-    const scale = DEFAULT_SCALE * zoomScale;
-    return [
-        width / 2 + pt[0] * scale,
-        height / 2 - pt[1] * scale
-    ];
-}
 
 // v: N-dimensional input vector (array)
 // angles: N-1 rotation angles (array), each for plane (i, i+1)
@@ -1878,35 +1875,56 @@ function getAngles() {
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-function draw_point(pt, ctx, w, v, camera)
-{
-    const [px, py, denom] = projectTo2D(pt, v, w, camera)
+function getScale() {
+  return Math.min(canvas.width, canvas.height) * 0.4 * zoomScale
+}
+
+// Scale [-1, 1] up to canvas size
+function toCanvasCoords(pt, width, height) {
+    let scale = getScale()
+    return [
+        width / 2 + pt[0] * scale,
+        height / 2 - pt[1] * scale
+    ];
+}
+
+
+function drawPoint(pt, ctx, w, v, camera, scaleByDistance) {
+    const [px, py, scale_factor] = projectTo2D(pt, v, w, camera);
     const [x, y] = toCanvasCoords([px, py], canvas.width, canvas.height);
     ctx.beginPath();
     
-    ctx.arc(x, y, (cicleSize * zoomScale) / denom, 0, 2 * Math.PI);
-    ctx.stroke()
+    // Use the toggle to determine whether to scale by distance
+    circleRadius = cicleSize * getScale()
+
+    if (scaleByDistance) {
+      circleRadius *= scale_factor
+    }
+    
+    ctx.arc(x, y, circleRadius, 0, 2 * Math.PI);
+    ctx.stroke();
 }
 
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = '#fff'
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.strokeStyle = '#fff';
 
-  angles = getAngles()
-  let w = applyGivensRotations(W, angles)
-  let v = applyGivensRotations(V, angles)
-  let camera = applyGivensRotations(VIEW_POINT, angles)
+    const angles = getAngles();
+    let w = applyGivensRotations(W, angles);
+    let v = applyGivensRotations(V, angles);
+    let camera = applyGivensRotations(VIEW_POINT, angles);
+    
+    // Get the toggle state
+    const scaleByDistance = document.getElementById('distanceToggle').checked;
 
-  points.forEach(pt => {
-      if (pt) {
-          draw_point(pt, ctx, w, v, camera)
-          // ctx.fill();
-      }
-  });
+    points.forEach(pt => {
+        if (pt) {
+            drawPoint(pt, ctx, w, v, camera, scaleByDistance);
+        }
+    });
 
-  ctx.strokeStyle = '#f00'
-  draw_point(Array(N).fill(0), ctx, w, v, camera)
-  
+    ctx.strokeStyle = '#f00';
+    drawPoint(Array(N).fill(0), ctx, w, v, camera, scaleByDistance);
 }
 
 // Add a function to handle zoom changes
@@ -1935,8 +1953,9 @@ function createSlider(id, label, min, max, value, step, onChange) {
   slider.id = id;
   slider.min = min;
   slider.max = max;
-  slider.value = value;
   slider.step = step;
+  slider.value = value;
+  
   slider.addEventListener('input', onChange);
   
   // Add value display
@@ -1954,19 +1973,50 @@ function createSlider(id, label, min, max, value, step, onChange) {
   return container;
 }
 
+function createToggleSwitch() {
+    const container = document.createElement('div');
+    container.className = 'toggle-container';
+    
+    const label = document.createElement('label');
+    label.className = 'toggle-switch';
+    
+    const input = document.createElement('input');
+    input.type = 'checkbox';
+    input.id = 'distanceToggle';
+    input.checked = true; // Default to on
+    input.addEventListener('change', draw);
+    
+    const span = document.createElement('span');
+    span.className = 'toggle-slider';
+    
+    const textLabel = document.createElement('label');
+    textLabel.htmlFor = 'distanceToggle';
+    textLabel.textContent = 'Scale by distance: ';
+    
+    label.appendChild(input);
+    label.appendChild(span);
+    
+    container.appendChild(textLabel);
+    container.appendChild(label);
+    
+    return container;
+}
+
 // Refactored createSliders function
 function createSliders(n) {
   const slidersDiv = document.getElementById('sliders');
   slidersDiv.innerHTML = '';
+
+  slidersDiv.appendChild(createToggleSwitch());
   
   // Add zoom slider
   slidersDiv.appendChild(
-    createSlider('zoomSlider', 'Zoom', '0.1', '5', '3', '0.1', updateZoom)
+     createSlider('zoomSlider', 'Zoom', 0.05, 1, 0.5, 0.05, updateZoom)
   );
   
   // Add circle size slider
   slidersDiv.appendChild(
-    createSlider('circleSizeSlider', 'Circle Size', '1', '40', '15', '1', updateCircleSize)
+    createSlider('circleSizeSlider', 'Circle Radius', 0.05, 3, DEFAULT_CIRCLE_RADIUS, 0.05, updateCircleSize)
   );
   
   // Add rotation sliders

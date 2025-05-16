@@ -1819,12 +1819,33 @@ function make4dSphereCenters() {
   return ret;
 }
 
+function make5dSphereCenters() {
+  let ret = []
+  // The verticies of a rectified pentacross
+  for (const sign1 of [-1, 1]) {
+    for (const sign2 of [-1, 1]) {
+      for (let i = 0; i < 5; i++) {
+        for (let j = i + 1; j < 5; j++) {
+          let = el = Array(5).fill(0);
+          el[i] = sign1;
+          el[j] = sign2;
+          ret.push(el)
+        }
+      }
+    }    
+  }
+
+  return ret;
+}
+
 function makeSphereCenters(n) {
   switch (n) {
     case 3:
       return make3dSphereCenters();
     case 4:
       return make4dSphereCenters();
+    case 5:
+      return make5dSphereCenters();
     case 11:
       // This is the magnitude of the google vectors, map stuff on to [-1, 1] instead
       return scale_sphere_centers(SPHERE_CENTERS_11D, 1e-13)
@@ -1981,44 +2002,6 @@ function applyGivenRotations(v, angles) {
     }
     return out;
 }
-
-// class HandCraftedTumbler {
-//   TUMBLE_RATE = Math.PI / 300
-//   TUMBLE_DIRECTION_SUSTAIN = 75
-
-
-//   constructor (dimensions) {
-//     this.tumbleFrame = 0;
-//   }
-
-
-
-
-//   nextTumble() {
-//     this.tumbleFrame ++
-//     if (this.tumbleFrame <= this.TUMBLE_DIRECTION_SUSTAIN)
-//     {
-//       return [0, 2, this.TUMBLE_RATE]
-//     }
-//     else if (this.tumbleFrame <= 135)
-//     {
-//       return [1, 2, this.TUMBLE_RATE]
-//     }
-//     else if (this.tumbleFrame <= 200)
-//     {
-//       return [0, 3, this.TUMBLE_RATE]
-//     }
-//     else if (this.tumbleFrame <= 250)
-//     {
-//       return [1, 2, this.TUMBLE_RATE]
-//     }
-//     else
-//     {
-//       return [0, 1, 0]
-//     }
-//   }
-
-// }
 
 class Tumbler {
   TUMBLE_RATE = Math.PI / 300
@@ -2192,13 +2175,6 @@ class StaticControls {
       currentVisualizer.stopTumble();
     }
   }
-
-  // // Reset rotation matrix to identity
-  // resetRotation() {
-  //   this.rotationMatrix = identityMatrix(this.dimensions);
-  //   this.tumbler = new Tumbler(this.dimensions, this)
-  //   this.draw();
-  // }
 }
 
 class NDVisualizer {
@@ -2246,23 +2222,23 @@ class NDVisualizer {
     // For X-axis, + button above - button
     const plusButton = document.createElement('button');
     plusButton.textContent = '+';
-    plusButton.addEventListener('click', () => this.rotate(axis1, axis2, this.rotationStepSize));
+    plusButton.addEventListener('click', () => this.rotate(axis1, axis2, this.staticControls.rotationStepSize));
     group.appendChild(plusButton);
     
     const minusButton = document.createElement('button');
     minusButton.textContent = '-';
-    minusButton.addEventListener('click', () => this.rotate(axis1, axis2, -this.rotationStepSize));
+    minusButton.addEventListener('click', () => this.rotate(axis1, axis2, -this.staticControls.rotationStepSize));
     group.appendChild(minusButton);
   } else {
     // For Y-axis and plane rotation, - button then + button
     const minusButton = document.createElement('button');
     minusButton.textContent = '-';
-    minusButton.addEventListener('click', () => this.rotate(axis1, axis2, -this.rotationStepSize));
+    minusButton.addEventListener('click', () => this.rotate(axis1, axis2, -this.staticControls.rotationStepSize));
     group.appendChild(minusButton);
     
     const plusButton = document.createElement('button');
     plusButton.textContent = '+';
-    plusButton.addEventListener('click', () => this.rotate(axis1, axis2, this.rotationStepSize));
+    plusButton.addEventListener('click', () => this.rotate(axis1, axis2, this.staticControls.rotationStepSize));
     group.appendChild(plusButton);
   }
   
@@ -2348,8 +2324,6 @@ class NDVisualizer {
   // Apply rotation around specified axes
   rotate(axis1, axis2, theta) {
     const rotMat = rotationMatrix(this.dimensions, axis1, axis2, theta);
-    
-    
     this.rotationMatrix = matrixMultiply(this.rotationMatrix, rotMat);
     this.draw();
   }

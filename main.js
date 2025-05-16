@@ -1816,8 +1816,6 @@ function make4dSphereCenters() {
     }    
   }
 
-  console.log(ret)
-
   return ret;
 }
 
@@ -1984,89 +1982,110 @@ function applyGivenRotations(v, angles) {
     return out;
 }
 
+// class HandCraftedTumbler {
+//   TUMBLE_RATE = Math.PI / 300
+//   TUMBLE_DIRECTION_SUSTAIN = 75
+
+
+//   constructor (dimensions) {
+//     this.tumbleFrame = 0;
+//   }
+
+
+
+
+//   nextTumble() {
+//     this.tumbleFrame ++
+//     if (this.tumbleFrame <= this.TUMBLE_DIRECTION_SUSTAIN)
+//     {
+//       return [0, 2, this.TUMBLE_RATE]
+//     }
+//     else if (this.tumbleFrame <= 135)
+//     {
+//       return [1, 2, this.TUMBLE_RATE]
+//     }
+//     else if (this.tumbleFrame <= 200)
+//     {
+//       return [0, 3, this.TUMBLE_RATE]
+//     }
+//     else if (this.tumbleFrame <= 250)
+//     {
+//       return [1, 2, this.TUMBLE_RATE]
+//     }
+//     else
+//     {
+//       return [0, 1, 0]
+//     }
+//   }
+
+// }
+
 class Tumbler {
-  constructor (dimensions) {
+  TUMBLE_RATE = Math.PI / 300
+  TUMBLE_DIRECTION_SUSTAIN = 75
+
+  constructor (dimensions, setter) {
     this.dimensions = dimensions
-    this.tumbleFramesRemaining = 0;
-    this.tumbleAxis1 = 0;
-    this.tumbleAxis2 = 1;
-    this.tumbleAngle = 0.031415926;
-    this.animationFrameId = null;
+    this.rotationMatrix = identityMatrix(dimensions)
+    this.tumbleFrame = this.TUMBLE_DIRECTION_SUSTAIN;
+    this.axis1 = 0;
+    this.axis2 = 1;
+    this.tumbleAngle = 0;
+    this.setter = setter;
   }
 
   pickRandomRotationAxes() {
-  choice = Math.floor(Math.random() * (2 * this.dimensions - 3))
+  let choice = Math.floor(Math.random() * (2 * this.dimensions - 3))
   if (choice == this.dimensions * 2 - 4)
   {
-    this.axis1 = 1;
-    this.axis2 = 2;
+    this.axis1 = 0;
+    this.axis2 = 1;
   }
   else
   {
-    this.axis1 = (choice % 2) + 1;
-    this.axis2 = Math.floor(choice / 2) + 3
+    this.axis1 = (choice % 2);
+    this.axis2 = Math.floor(choice / 2) + 2
   }
 
-  angle = Math.random() > 0.5 ? 0.031415926 : -0.031415926;
+  this.angle = Math.random() > 0.5 ? this.TUMBLE_RATE : -this.TUMBLE_RATE;
   
-  return [axis1, axis2, angle];
+  return [this.axis1, this.axis2, this.angle];
 }
 
 // Perform one step of the tumble animation
 nextTumble() {
   // If we've completed the current tumble sequence, pick a new direction
-  if (this.tumbleFramesRemaining <= 0) {
+  if (this.tumbleFrame == this.TUMBLE_DIRECTION_SUSTAIN) {
+    const rotMat = rotationMatrix(this.dimensions, this.axis1, this.axis2, this.tumbleAngle * this.tumbleFrame);
+    this.rotationMatrix = matrixMultiply(this.rotationMatrix, rotMat);
+
     [this.tumbleAxis1, this.tumbleAxis2, this.tumbleAngle] = this.pickRandomRotationAxes();
-    this.tumbleFramesRemaining = 20; // Reset counter for 20 frames
+    this.tumbleFrame = 0;
   }
   
   // Rotate a small step in the current tumble direction
+  this.tumbleFrame++;
+  const rotMat = rotationMatrix(this.dimensions, this.axis1, this.axis2, this.tumbleAngle * this.tumbleFrame);
   
-  this.tumbleFramesRemaining--;
-  return [this.tumbleAxis1, this.tumbleAxis2, this.tumbleAngle]
+  this.setter.set_rotation_matrix(matrixMultiply(this.rotationMatrix, rotMat));
 }
 }
 
 const DEFAULT_CIRCLE_RADIUS = 0.5
 
+// Global variable to hold the current visualizer
+let currentVisualizer;
 
-class NDVisualizer {
-  constructor(dimensions, sphereCenters) {
-    this.dimensions = dimensions;
-    this.points = sphereCenters;
-    
-    // Initialize default vectors
-    this.v = Array(dimensions).fill(0);
-    this.v[0] = 1;
-    
-    this.w = Array(dimensions).fill(0);
-    this.w[1] = 1;
-    
-    // Default view point for depth perception
-    this.viewPoint = Array(dimensions).fill(0);
-    this.viewPoint[2] = -4;
-    
-    // Default settings
+
+class StaticControls {
+    constructor() {
     this.zoomScale = 0.5;
     this.circleSize = DEFAULT_CIRCLE_RADIUS;
     this.scaleByDistance = true;
-    this.rotationMatrix = identityMatrix(dimensions);
-    
-    // Canvas and context
     this.canvas = document.getElementById('canvas');
     this.ctx = this.canvas.getContext('2d');
     this.rotationStepSize = 0.1; // Default rotation step size
-    
-    // Set up static controls
-    this.setupStaticControls();
-    
-    // Create dimension-dependent controls
-    this.createDimensionControls();
-    this.tumbleActive = false;
-    this.tumbler = new Tumbler(dimensions);
-  }
 
-  setupStaticControls() {
     // Distance toggle
     const distanceToggle = document.getElementById('distanceToggle');
     distanceToggle.checked = this.scaleByDistance;
@@ -2103,17 +2122,114 @@ class NDVisualizer {
       document.getElementById('rotationStepSliderValue').textContent = value;
       this.setRotationStepSize(value);
     });
-    
-    // Reset button
-    const resetButton = document.getElementById('resetButton');
-    resetButton.addEventListener('click', () => this.resetRotation());
-
 
     const tumbleToggle = document.getElementById('tumbleToggle');
     tumbleToggle.checked = this.tumbleActive;
     tumbleToggle.addEventListener('change', () => {
       this.setTumbleMode(tumbleToggle.checked);
     });
+  }
+
+
+  // Get the current scale factor for drawing
+  getScale() {
+    return Math.min(this.canvas.width, this.canvas.height) * 0.4 * this.zoomScale;
+  }
+  
+  // Convert normalized coordinates to canvas coordinates
+  toCanvasCoords(pt) {
+    let scale = this.getScale();
+    return [
+      this.canvas.width / 2 + pt[0] * scale,
+      this.canvas.height / 2 - pt[1] * scale
+    ];
+  }
+
+   // Draw a single point
+  drawPoint(pt, v, w, camera) {
+    const [px, py, scale_factor] = projectTo2D(pt, v, w, camera);
+    const [x, y] = this.toCanvasCoords([px, py]);
+    this.ctx.beginPath();
+    
+    let circleRadius = this.circleSize * this.getScale();
+    
+    if (this.scaleByDistance) {
+      circleRadius *= scale_factor;
+    }
+    
+    this.ctx.arc(x, y, circleRadius, 0, 2 * Math.PI);
+    this.ctx.stroke();
+  }
+
+   // Update zoom scale
+  setZoom(zoom) {
+    this.zoomScale = zoom;
+    this.draw();
+  }
+    
+  // Update circle size
+  setCircleSize(size) {
+    this.circleSize = size;
+    this.draw();
+  }
+  
+  // Update rotation step size
+  setRotationStepSize(size) {
+    this.rotationStepSize = size;
+  }
+  
+  // Update distance scaling toggle
+  setScaleByDistance(enabled) {
+    this.scaleByDistance = enabled;
+    this.draw();
+  }
+
+    // Toggle tumble mode on/off
+  setTumbleMode(enabled) {
+    if (enabled) {
+      currentVisualizer.startTumble();
+    } else {
+      currentVisualizer.stopTumble();
+    }
+  }
+
+  // // Reset rotation matrix to identity
+  // resetRotation() {
+  //   this.rotationMatrix = identityMatrix(this.dimensions);
+  //   this.tumbler = new Tumbler(this.dimensions, this)
+  //   this.draw();
+  // }
+}
+
+class NDVisualizer {
+  constructor(dimensions, sphereCenters, staticControls) {
+    this.dimensions = dimensions;
+    this.points = sphereCenters;
+    this.staticControls = staticControls;
+    
+    // Initialize default vectors
+    this.v = Array(dimensions).fill(0);
+    this.v[0] = 1;
+    
+    this.w = Array(dimensions).fill(0);
+    this.w[1] = 1;
+    
+    // Default view point for depth perception
+    this.viewPoint = Array(dimensions).fill(0);
+    this.viewPoint[2] = -4;
+    
+    // Default settings
+    this.rotationMatrix = identityMatrix(dimensions);
+    
+    // Create dimension-dependent controls
+    this.createDimensionControls();
+    this.tumbleActive = false;
+    this.tumbler = new Tumbler(dimensions, this);
+    this.animationFrameId = null
+  }
+
+  set_rotation_matrix(rotMat) {
+    this.rotationMatrix = rotMat
   }
 
   // Create a rotation control button group
@@ -2189,8 +2305,8 @@ class NDVisualizer {
   const animate = () => {
     if (!this.tumbleActive) return;
     
-    rotation = this.tumbler.nextTumble();
-    this.rotate(...rotation)
+    this.tumbler.nextTumble();
+    this.draw()
     // Request next frame
     this.animationFrameId = requestAnimationFrame(animate);
   };
@@ -2206,50 +2322,10 @@ class NDVisualizer {
   }
 }
 
-  // Toggle tumble mode on/off
-  setTumbleMode(enabled) {
-    if (enabled) {
-      this.startTumble();
-    } else {
-      this.stopTumble();
-    }
-  }
-  
-
-  // Get the current scale factor for drawing
-  getScale() {
-    return Math.min(this.canvas.width, this.canvas.height) * 0.4 * this.zoomScale;
-  }
-  
-  // Convert normalized coordinates to canvas coordinates
-  toCanvasCoords(pt) {
-    let scale = this.getScale();
-    return [
-      this.canvas.width / 2 + pt[0] * scale,
-      this.canvas.height / 2 - pt[1] * scale
-    ];
-  }
-
-   // Draw a single point
-  drawPoint(pt, v, w, camera) {
-    const [px, py, scale_factor] = projectTo2D(pt, v, w, camera);
-    const [x, y] = this.toCanvasCoords([px, py]);
-    this.ctx.beginPath();
-    
-    let circleRadius = this.circleSize * this.getScale();
-    
-    if (this.scaleByDistance) {
-      circleRadius *= scale_factor;
-    }
-    
-    this.ctx.arc(x, y, circleRadius, 0, 2 * Math.PI);
-    this.ctx.stroke();
-  }
-
   // Draw all points with current rotation
   draw() {
-    this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-    this.ctx.strokeStyle = '#fff';
+    this.staticControls.ctx.clearRect(0, 0, this.staticControls.canvas.width, this.staticControls.canvas.height);
+    this.staticControls.ctx.strokeStyle = '#fff';
     
     // Apply rotation matrix to basis vectors and camera
     let v = applyMatrix(this.rotationMatrix, this.v);
@@ -2260,13 +2336,13 @@ class NDVisualizer {
     // Draw all sphere centers
     this.points.forEach(pt => {
       if (pt) {
-        this.drawPoint(pt, v, w, camera);
+        this.staticControls.drawPoint(pt, v, w, camera);
       }
     });
     
     // Draw the origin point in red
-    this.ctx.strokeStyle = '#f00';
-    this.drawPoint(Array(this.dimensions).fill(0), v, w, camera);
+    this.staticControls.ctx.strokeStyle = '#f00';
+    this.staticControls.drawPoint(Array(this.dimensions).fill(0), v, w, camera);
     }
 
   // Apply rotation around specified axes
@@ -2277,44 +2353,13 @@ class NDVisualizer {
     this.rotationMatrix = matrixMultiply(this.rotationMatrix, rotMat);
     this.draw();
   }
-
-  // Update zoom scale
-  setZoom(zoom) {
-    this.zoomScale = zoom;
-    this.draw();
-  }
-    
-  // Update circle size
-  setCircleSize(size) {
-    this.circleSize = size;
-    this.draw();
-  }
-  
-  // Update rotation step size
-  setRotationStepSize(size) {
-    this.rotationStepSize = size;
-  }
-  
-  // Update distance scaling toggle
-  setScaleByDistance(enabled) {
-    this.scaleByDistance = enabled;
-    this.draw();
-  }
-
-  // Reset rotation matrix to identity
-  resetRotation() {
-    this.rotationMatrix = identityMatrix(this.dimensions);
-    this.draw();
-  }
 }
 
 
 // Drawing on canvas
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+const staticControls = new StaticControls();
 
-// Global variable to hold the current visualizer
-let currentVisualizer;
+
 
 // Function to initialize or reinitialize the visualizer
 function initVisualizer(dimensions) {
@@ -2324,7 +2369,7 @@ function initVisualizer(dimensions) {
     }
 
     // Create a new visualizer with the selected number of dimensions
-    currentVisualizer = new NDVisualizer(dimensions, makeSphereCenters(dimensions));
+    currentVisualizer = new NDVisualizer(dimensions, makeSphereCenters(dimensions), staticControls);
     
     // Draw the visualization
     currentVisualizer.draw();
@@ -2334,6 +2379,14 @@ function initVisualizer(dimensions) {
 document.getElementById('dimensionSelect').addEventListener('change', function() {
     const dimensions = parseInt(this.value);
     initVisualizer(dimensions);
+    document.getElementById('tumbleToggle').checked = false;
+});
+
+const resetButton = document.getElementById('resetButton');
+resetButton.addEventListener('click', () => {
+  const dimensions = parseInt(this.value);
+  initVisualizer(dimensions);
+  document.getElementById('tumbleToggle').checked = false;
 });
 
 // Initialize with the default selection (11D)

@@ -1,5 +1,6 @@
 // From the google results: https://colab.research.google.com/github/google-deepmind/alphaevolve_results/blob/master/mathematical_results.ipynb#scrollTo=apAGiN_xeJ2h
 
+
 const SPHERE_CENTERS_11D = [[ -126140549599, -4345934944399,   470267207045,   263582420739,
    -214242641164,  6323834592662, -5619609064852, -1309426459793,
     402713598698,  2669019955225,  -434830723701],
@@ -1892,7 +1893,6 @@ function sub(a, b) { return a.map((ai, i) => ai - b[i]); }
 function scale(a, s) { return a.map(ai => ai * s); }
 
 
-
 // v and w are N-dimensional, orthonormal vectors defining the 2D view plane
 function projectTo2D(P, v, w, camera) {
     let x = dot(P, v);
@@ -1984,6 +1984,49 @@ function applyGivenRotations(v, angles) {
     return out;
 }
 
+class Tumbler {
+  constructor (dimensions) {
+    this.dimensions = dimensions
+    this.tumbleFramesRemaining = 0;
+    this.tumbleAxis1 = 0;
+    this.tumbleAxis2 = 1;
+    this.tumbleAngle = 0.031415926;
+    this.animationFrameId = null;
+  }
+
+  pickRandomRotationAxes() {
+  choice = Math.floor(Math.random() * (2 * this.dimensions - 3))
+  if (choice == this.dimensions * 2 - 4)
+  {
+    this.axis1 = 1;
+    this.axis2 = 2;
+  }
+  else
+  {
+    this.axis1 = (choice % 2) + 1;
+    this.axis2 = Math.floor(choice / 2) + 3
+  }
+
+  angle = Math.random() > 0.5 ? 0.031415926 : -0.031415926;
+  
+  return [axis1, axis2, angle];
+}
+
+// Perform one step of the tumble animation
+nextTumble() {
+  // If we've completed the current tumble sequence, pick a new direction
+  if (this.tumbleFramesRemaining <= 0) {
+    [this.tumbleAxis1, this.tumbleAxis2, this.tumbleAngle] = this.pickRandomRotationAxes();
+    this.tumbleFramesRemaining = 20; // Reset counter for 20 frames
+  }
+  
+  // Rotate a small step in the current tumble direction
+  
+  this.tumbleFramesRemaining--;
+  return [this.tumbleAxis1, this.tumbleAxis2, this.tumbleAngle]
+}
+}
+
 const DEFAULT_CIRCLE_RADIUS = 0.5
 
 
@@ -2019,6 +2062,8 @@ class NDVisualizer {
     
     // Create dimension-dependent controls
     this.createDimensionControls();
+    this.tumbleActive = false;
+    this.tumbler = new Tumbler(dimensions);
   }
 
   setupStaticControls() {
@@ -2038,8 +2083,8 @@ class NDVisualizer {
       document.getElementById('zoomSliderValue').textContent = value;
       this.setZoom(value);
     });
-    
-    // Circle size slider
+
+        // Circle size slider
     const circleSizeSlider = document.getElementById('circleSizeSlider');
     circleSizeSlider.value = this.circleSize;
     document.getElementById('circleSizeSliderValue').textContent = this.circleSize;
@@ -2062,6 +2107,13 @@ class NDVisualizer {
     // Reset button
     const resetButton = document.getElementById('resetButton');
     resetButton.addEventListener('click', () => this.resetRotation());
+
+
+    const tumbleToggle = document.getElementById('tumbleToggle');
+    tumbleToggle.checked = this.tumbleActive;
+    tumbleToggle.addEventListener('change', () => {
+      this.setTumbleMode(tumbleToggle.checked);
+    });
   }
 
   // Create a rotation control button group
@@ -2078,23 +2130,23 @@ class NDVisualizer {
     // For X-axis, + button above - button
     const plusButton = document.createElement('button');
     plusButton.textContent = '+';
-    plusButton.addEventListener('click', () => this.rotate(axis1, axis2, 1));
+    plusButton.addEventListener('click', () => this.rotate(axis1, axis2, this.rotationStepSize));
     group.appendChild(plusButton);
     
     const minusButton = document.createElement('button');
     minusButton.textContent = '-';
-    minusButton.addEventListener('click', () => this.rotate(axis1, axis2, -1));
+    minusButton.addEventListener('click', () => this.rotate(axis1, axis2, -this.rotationStepSize));
     group.appendChild(minusButton);
   } else {
     // For Y-axis and plane rotation, - button then + button
     const minusButton = document.createElement('button');
     minusButton.textContent = '-';
-    minusButton.addEventListener('click', () => this.rotate(axis1, axis2, -1));
+    minusButton.addEventListener('click', () => this.rotate(axis1, axis2, -this.rotationStepSize));
     group.appendChild(minusButton);
     
     const plusButton = document.createElement('button');
     plusButton.textContent = '+';
-    plusButton.addEventListener('click', () => this.rotate(axis1, axis2, 1));
+    plusButton.addEventListener('click', () => this.rotate(axis1, axis2, this.rotationStepSize));
     group.appendChild(plusButton);
   }
   
@@ -2127,6 +2179,42 @@ class NDVisualizer {
       yAxisControls.appendChild(yAxisGroup);
     }
   }
+
+  startTumble() {
+  if (this.tumbleActive) return; // Already running
+  
+  this.tumbleActive = true;
+  this.tumbleFramesRemaining = 0; // Force new direction on first frame
+  
+  const animate = () => {
+    if (!this.tumbleActive) return;
+    
+    rotation = this.tumbler.nextTumble();
+    this.rotate(...rotation)
+    // Request next frame
+    this.animationFrameId = requestAnimationFrame(animate);
+  };
+    animate();
+  }
+
+
+  stopTumble() {
+  this.tumbleActive = false;
+  if (this.animationFrameId) {
+    cancelAnimationFrame(this.animationFrameId);
+    this.animationFrameId = null;
+  }
+}
+
+  // Toggle tumble mode on/off
+  setTumbleMode(enabled) {
+    if (enabled) {
+      this.startTumble();
+    } else {
+      this.stopTumble();
+    }
+  }
+  
 
   // Get the current scale factor for drawing
   getScale() {
@@ -2169,6 +2257,7 @@ class NDVisualizer {
     let camera = applyMatrix(this.rotationMatrix, this.viewPoint);
     
     // Draw all sphere centers
+    // Draw all sphere centers
     this.points.forEach(pt => {
       if (pt) {
         this.drawPoint(pt, v, w, camera);
@@ -2178,11 +2267,10 @@ class NDVisualizer {
     // Draw the origin point in red
     this.ctx.strokeStyle = '#f00';
     this.drawPoint(Array(this.dimensions).fill(0), v, w, camera);
-  }
+    }
 
   // Apply rotation around specified axes
-  rotate(axis1, axis2, direction) {
-    const theta = direction * this.rotationStepSize;
+  rotate(axis1, axis2, theta) {
     const rotMat = rotationMatrix(this.dimensions, axis1, axis2, theta);
     
     
@@ -2195,7 +2283,7 @@ class NDVisualizer {
     this.zoomScale = zoom;
     this.draw();
   }
-  
+    
   // Update circle size
   setCircleSize(size) {
     this.circleSize = size;
@@ -2219,192 +2307,6 @@ class NDVisualizer {
     this.draw();
   }
 }
-// createControls() {
-//   const slidersDiv = document.getElementById('sliders');
-//   slidersDiv.innerHTML = '';
-  
-//   // Add toggle switch for distance scaling
-//   const toggleContainer = createToggleSwitch(() => this.draw());
-//   const toggleInput = toggleContainer.querySelector('input');
-//   toggleInput.checked = this.scaleByDistance;
-//   toggleInput.addEventListener('change', () => {
-//     this.setScaleByDistance(toggleInput.checked);
-//   });
-//   slidersDiv.appendChild(toggleContainer);
-  
-//   // Add zoom slider
-//   const zoomSlider = createSlider(
-//     'zoomSlider', 
-//     'Zoom', 
-//     0.05, 
-//     1, 
-//     this.zoomScale, 
-//     0.05, 
-//     () => {
-//       this.setZoom(parseFloat(document.getElementById('zoomSlider').value));
-//     }
-//   );
-//   slidersDiv.appendChild(zoomSlider);
-  
-//   // Add circle size slider
-//   const circleSizeSlider = createSlider(
-//     'circleSizeSlider', 
-//     'Circle Radius', 
-//     0.02, 
-//     1.5, 
-//     this.circleSize, 
-//     0.02, 
-//     () => {
-//       this.setCircleSize(parseFloat(document.getElementById('circleSizeSlider').value));
-//     }
-//   );
-//   slidersDiv.appendChild(circleSizeSlider);
-  
-//   // Add rotation step size slider
-//   const rotationStepSlider = createSlider(
-//     'rotationStepSlider', 
-//     'Rotation Step Size', 
-//     0.01, 
-//     Math.PI/4, 
-//     this.rotationStepSize, 
-//     0.01, 
-//     () => {
-//       this.setRotationStepSize(parseFloat(document.getElementById('rotationStepSlider').value));
-//     }
-//   );
-//   slidersDiv.appendChild(rotationStepSlider);
-  
-//   // Add reset button
-//   const resetButton = document.createElement('button');
-//   resetButton.textContent = 'Reset Rotation';
-//   resetButton.className = 'control-button';
-//   resetButton.addEventListener('click', () => this.resetRotation());
-  
-//   const resetContainer = document.createElement('div');
-//   resetContainer.className = 'button-container';
-//   resetContainer.appendChild(resetButton);
-//   slidersDiv.appendChild(resetContainer);
-  
-//   // Create canvas controls container
-//   const canvasContainer = document.querySelector('.canvas-container');
-//   if (!canvasContainer) {
-//     // Create canvas container if it doesn't exist
-//     const newCanvasContainer = document.createElement('div');
-//     newCanvasContainer.className = 'canvas-container';
-    
-//     // Get the canvas and its parent
-//     const canvas = document.getElementById('canvas');
-//     const canvasParent = canvas.parentElement;
-    
-//     // Insert the new container where the canvas was
-//     canvasParent.insertBefore(newCanvasContainer, canvas);
-    
-//     // Move the canvas into the new container
-//     newCanvasContainer.appendChild(canvas);
-//   }
-  
-//   // Remove any existing canvas controls
-//   const existingControls = document.querySelector('.canvas-controls-container');
-//   if (existingControls) {
-//     existingControls.remove();
-//   }
-  
-//   // Create a container for the canvas and its controls
-//   const canvasControlsContainer = document.createElement('div');
-//   canvasControlsContainer.className = 'canvas-controls-container';
-//   document.querySelector('.canvas-container').appendChild(canvasControlsContainer);
-  
-//   // Move the canvas into this container
-//   const canvas = document.getElementById('canvas');
-//   canvasControlsContainer.appendChild(canvas);
-  
-//   // Create X-axis rotation controls (horizontal along bottom)
-//   const xAxisControls = document.createElement('div');
-//   xAxisControls.className = 'x-axis-controls';
-//   canvasControlsContainer.appendChild(xAxisControls);
-  
-//   // Create Y-axis rotation controls (vertical along left side)
-//   const yAxisControls = document.createElement('div');
-//   yAxisControls.className = 'y-axis-controls';
-//   canvasControlsContainer.appendChild(yAxisControls);
-  
-//   // Create the special case "Rotate in plane" control for bottom left
-//   const planeRotationControl = document.createElement('div');
-//   planeRotationControl.className = 'plane-rotation-control';
-//   canvasControlsContainer.appendChild(planeRotationControl);
-  
-//   // Add the special case button (X-axis with dimension 1)
-//   const planeRotationGroup = document.createElement('div');
-//   planeRotationGroup.className = 'button-group';
-  
-//   const planeRotationLabel = document.createElement('span');
-//   planeRotationLabel.textContent = 'Rotate in plane';
-//   planeRotationLabel.className = 'rotation-label';
-//   planeRotationGroup.appendChild(planeRotationLabel);
-  
-//   // For the plane rotation, keep the original order (- then +)
-//   const planeMinusButton = document.createElement('button');
-//   planeMinusButton.textContent = '-';
-//   planeMinusButton.addEventListener('click', () => this.rotate(0, 1, -1));
-//   planeRotationGroup.appendChild(planeMinusButton);
-  
-//   const planePlusButton = document.createElement('button');
-//   planePlusButton.textContent = '+';
-//   planePlusButton.addEventListener('click', () => this.rotate(0, 1, 1));
-//   planeRotationGroup.appendChild(planePlusButton);
-  
-//   planeRotationControl.appendChild(planeRotationGroup);
-  
-//   // Add X-axis rotation buttons (starting from dimension 2)
-//   for (let dim = 2; dim < this.dimensions; dim++) {
-//     const xAxisGroup = document.createElement('div');
-//     xAxisGroup.className = 'button-group x-axis-button';
-    
-//     const xAxisLabel = document.createElement('span');
-//     xAxisLabel.textContent = `X-${dim+1}`;
-//     xAxisLabel.className = 'rotation-label';
-//     xAxisGroup.appendChild(xAxisLabel);
-    
-//     // For X-axis controls, put + button above - button
-//     const xPlusButton = document.createElement('button');
-//     xPlusButton.textContent = '+';
-//     xPlusButton.addEventListener('click', () => this.rotate(0, dim, 1));
-//     xAxisGroup.appendChild(xPlusButton);
-    
-//     const xMinusButton = document.createElement('button');
-//     xMinusButton.textContent = '-';
-//     xMinusButton.addEventListener('click', () => this.rotate(0, dim, -1));
-//     xAxisGroup.appendChild(xMinusButton);
-    
-//     xAxisControls.appendChild(xAxisGroup);
-//   }
-  
-//   // Add Y-axis rotation buttons (starting from dimension 2)
-//   for (let dim = 2; dim < this.dimensions; dim++) {
-//     const yAxisGroup = document.createElement('div');
-//     yAxisGroup.className = 'button-group y-axis-button';
-    
-//     const yAxisLabel = document.createElement('span');
-//     yAxisLabel.textContent = `Y-${dim+1}`;
-//     yAxisLabel.className = 'rotation-label';
-//     yAxisGroup.appendChild(yAxisLabel);
-    
-//     const yMinusButton = document.createElement('button');
-//     yMinusButton.textContent = '-';
-//     yMinusButton.addEventListener('click', () => this.rotate(1, dim, -1));
-//     yAxisGroup.appendChild(yMinusButton);
-    
-//     const yPlusButton = document.createElement('button');
-//     yPlusButton.textContent = '+';
-//     yPlusButton.addEventListener('click', () => this.rotate(1, dim, 1));
-//     yAxisGroup.appendChild(yPlusButton);
-    
-//     yAxisControls.appendChild(yAxisGroup);
-//   }
-// }
-// }
-
-
 
 
 // Drawing on canvas
@@ -2416,6 +2318,11 @@ let currentVisualizer;
 
 // Function to initialize or reinitialize the visualizer
 function initVisualizer(dimensions) {
+    // Stop any existing tumble animation
+    if (currentVisualizer) {
+        currentVisualizer.stopTumble();
+    }
+
     // Create a new visualizer with the selected number of dimensions
     currentVisualizer = new NDVisualizer(dimensions, makeSphereCenters(dimensions));
     

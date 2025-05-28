@@ -2111,6 +2111,12 @@ class StaticControls {
     tumbleToggle.addEventListener('change', () => {
       this.setTumbleMode(tumbleToggle.checked);
     });
+    }
+
+    draw() {
+    if (currentVisualizer) {
+      currentVisualizer.draw();
+    }
   }
 
 
@@ -2309,7 +2315,6 @@ class NDVisualizer {
     let camera = applyMatrix(this.rotationMatrix, this.viewPoint);
     
     // Draw all sphere centers
-    // Draw all sphere centers
     this.points.forEach(pt => {
       if (pt) {
         this.staticControls.drawPoint(pt, v, w, camera);
@@ -2350,7 +2355,8 @@ function initVisualizer(dimensions) {
 }
 
 // Event listener for dimension dropdown changes
-document.getElementById('dimensionSelect').addEventListener('change', function() {
+dimensionSelect = document.getElementById('dimensionSelect');
+dimensionSelect.addEventListener('change', function() {
     const dimensions = parseInt(this.value);
     initVisualizer(dimensions);
     document.getElementById('tumbleToggle').checked = false;
@@ -2358,7 +2364,7 @@ document.getElementById('dimensionSelect').addEventListener('change', function()
 
 const resetButton = document.getElementById('resetButton');
 resetButton.addEventListener('click', () => {
-  const dimensions = parseInt(this.value);
+  const dimensions = parseInt(dimensionSelect.value);
   initVisualizer(dimensions);
   document.getElementById('tumbleToggle').checked = false;
 });
